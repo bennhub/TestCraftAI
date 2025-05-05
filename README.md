@@ -1,64 +1,104 @@
-# Test Botter 
+# QA-AI: Context-Aware Test Case Generator
 
-## Description
+An AI-powered tool for generating test cases, feature questions, and test plans based on your application's UI functionality.
 
-**Test Botter**  is a tool I designed to assist in generating test cases using AI. It leverages custom prompts to generate common test cases or get it to come up with some out of the box scenarios for your features - this is for helping quality assurance engineers streamline their testing processes. More features are coming soon to further enhance the capabilities of this tool. I don't want this to just be a test case generator, it will contain more AI-QA related features. 
+## Overview
 
-I created this tool utilizing Google Gemini AI Modal - to help with testing, providing an AI bot that you can reach out to for assistance whenever needed.
-
-
-![](https://raw.githubusercontent.com/bennhub/GitHub-QA-Portfolio/6b584793888b9a8d4899fad0d0477a19e578c844/AI-QA%20Projects/ai_bot_testcase_3.gif
-)
-
-
+QA-AI leverages Google's Gemini AI to create professional QA documentation. The key feature of this tool is its context awareness - it stores knowledge about your application UI and remembers past conversations to generate more relevant and accurate QA materials.
 
 ## Features
 
-- Generate common test cases using custom prompts
-- User-friendly interface for interacting with the AI
-- Efficient and quick test case generation
-- More features coming soon...
+- **Test Case Generation**: Create detailed test cases with clear steps, actions, and expected results
+- **Feature Understanding Questions**: Generate comprehensive lists of questions to ask developers or product managers
+- **Test Plan Creation**: Develop full test plans with scope, strategy, and risk assessment
+- **Persistent Memory**: Stores application context and conversation history in localStorage
+- **Context Management**: Edit application documentation, view history, and reset if needed
+- **Saved Test Cases**: Store and reuse common test case templates
 
+## Getting Started
 
-## Installation and Setup
+### Prerequisites
 
-1. **Clone the Repository**
-```bash
-git clone [repository-url]
+1. You need a Google Gemini API key
+2. Modern web browser with JavaScript enabled
+
+### Setup
+
+1. Clone this repository
+2. Create a `config.js` file with your API key:
+```javascript
+// config.js
+export const API_KEY = "your-gemini-api-key";
 ```
+3. Serve the files using your preferred method (local server, etc.)
+4. Open index.html in your browser
 
-2. **Install Dependencies**
-Navigate to the project directory and install the required dependencies:
+## Files Structure
 
-3. **Install Required Libraries**
-Install Google Generative AI and markdown-it libraries:
-```bash
-npm install @google/generative-ai markdown-it
-```
-
-4. **Environment Variables**
-Set up the `.env` file with your Google Generative AI API Key:
-```bash
-VITE_API_KEY=your_api_key_here
-```
-
-5. **Run the Application**
-Start the application locally:
-```bash
-npm run dev
-```
-
-6. **Open in Browser**
-The AI-buddy will be available at `http://localhost:3000` (default URL).
+- **index.html**: Main application interface
+- **main.js**: Core application logic
+- **prompts.js**: Basic prompt templates (not used in the enhanced version)
+- **enhanced-prompts.js**: Context-aware prompt functions 
+- **context.js**: Manages application context and conversation storage
 
 ## Usage
 
- - **Enter Your Details:** Fill in the input fields with your test case details and descriptions, then click "Add Test Case" to add them to the list below.
+### Setting Application Context
 
- - **Generate Test Scenarios:** Choose test cases from the list to have the AI generate detailed scenarios based on them.
+1. Click "Edit App Documentation" in the sidebar
+2. Enter detailed information about your application's UI and functionality
+3. This knowledge helps the AI create more accurate and relevant test materials
 
- - **Customize Test Cases:** For permanent test cases, you can directly edit the JSON file with your custom prompts.
+### Generating QA Materials
 
- - **Personalize Your AI:** Have fun by giving your AI a personality that makes interactions enjoyable!
+1. Enter a title and details for the feature you want to test
+2. Use the "Generate Test Case", "Generate Questions", or "Generate Test Plan" buttons
+3. The AI will use your application context to create tailored QA materials
+4. Copy the generated content using the copy button in each AI response
 
-# TestCraftAI
+### Managing Context
+
+- **View Current Context**: See the current application documentation and conversation history
+- **Clear Conversation History**: Remove past conversations while keeping app documentation
+- **Reset To Default**: Restore the default app documentation and clear history
+
+### Saved Test Cases
+
+You can save commonly used test case templates for quick reuse:
+
+1. Enter title and details for a reusable test case
+2. Click "Save Test Case"
+3. Click on any saved test case to generate QA materials from it
+
+## Customization
+
+### Modifying Prompts
+
+Edit the prompts in `enhanced-prompts.js` to change how the AI generates content. Each prompt function can be customized to your specific QA needs and terminology.
+
+### Adding New Capabilities
+
+You can extend the system by:
+
+1. Adding new prompt functions in `enhanced-prompts.js`
+2. Creating corresponding handler functions in `main.js`
+3. Adding UI elements to trigger your new capabilities
+
+## How It Works
+
+1. The application stores detailed UI knowledge in localStorage
+2. When you request QA materials, the AI receives:
+   - Your specific request
+   - The application UI documentation
+   - Recent conversation history for context
+3. This context helps the AI create more relevant and application-specific content
+
+## License
+
+[Your License Here]
+
+## Acknowledgements
+
+- Google Gemini AI
+- Markdown-it for rendering
+- TailwindCSS for styling
