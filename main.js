@@ -1,0 +1,599 @@
+import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai@latest";
+import MarkdownIt from "https://esm.run/markdown-it@13.0.1";
+import { API_KEY } from "./config.js";
+// Import prompts from the separate file
+import { TEST_CASE_PROMPT, QUESTIONS_PROMPT } from "./prompts.js";
+
+// Initialize markdown parser
+const md = new MarkdownIt();
+
+// --- Initialize the model USING the imported key ---
+// Check if the imported API key is valid before initializing
+if (!API_KEY || API_KEY === "") {
+  // Display an error or alert if the key is missing/default in config.js
+  alert(
+    "ERROR: API Key is missing or not set in config.js. Please create config.js and add your API key."
+  );
+  // You might want to prevent further execution or disable functionality here
+  // For simplicity, we'll log an error, but the API call will likely fail.
+  console.error("API Key is missing or not set in config.js!");
+  // Optionally throw an error to stop script execution:
+  // throw new Error("API Key configuration error.");
+}
+
+// Initialize the model with the updated version
+const genAI = new GoogleGenerativeAI(API_KEY);
+// Update to Gemini 2.0 Flash
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+let history = [];
+let testCases = [];
+
+// Function to send prompt to the AI model and get response
+// Find this function in main.js
+async function getResponse(userPrompt) {
+  // Using the imported prompt instead of hardcoding it
+  const personality = TEST_CASE_PROMPT;
+
+  const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;
+
+  try {
+    const chat = model.startChat({ history: history });
+    const result = await chat.sendMessage(fullPrompt);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log("AI response (raw):", text); // Log raw response
+
+    // Update history (using correct format)
+    // Avoid pushing duplicate history entries if this gets called outside handleSubmit/handleTestCaseClick
+    // This logic might need refinement depending on exact flow.
+    // Let's assume history update happens where getResponse is called for now.
+    // history.push({ role: "user", parts: [{ text: userPrompt }] });
+    // history.push({ role: "model", parts: [{ text: text }] });
+    // console.log("Updated History:", history);
+
+    return text; // Return the raw Markdown text
+  } catch (error) {
+    console.error("Error communicating with AI:", error);
+    const chatArea = document.getElementById("chat-container");
+    if (chatArea) {
+      // Use aiDiv structure for consistency, passing simple HTML
+      chatArea.innerHTML += aiDiv(
+        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(
+          error.message
+        )}</p></div>`
+      );
+      scrollToLastMessage(chatArea);
+    }
+    return null;
+  }
+}
+
+// NEW FUNCTION: Generate feature understanding questions
+async function getQuestionsResponse(userPrompt) {
+  // Using the imported prompt instead of hardcoding it
+  const personality = QUESTIONS_PROMPT;
+
+  const fullPrompt = `${personality}\n\nGenerate questions for this feature/ticket:\n${userPrompt}`;
+
+  try {
+    // Use the same format that works in getResponse
+    const chat = model.startChat({ history: [] });
+    const result = await chat.sendMessage(fullPrompt);  // Simple string format
+    
+    const response = await result.response;
+    const text = response.text();
+
+    console.log("AI response (questions):", text);
+    return text;
+  } catch (error) {
+    console.error("Error communicating with AI for questions:", error);
+    const chatArea = document.getElementById("chat-container");
+    if (chatArea) {
+      chatArea.innerHTML += aiDiv(
+        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(
+          error.message
+        )}</p></div>`
+      );
+      scrollToLastMessage(chatArea);
+    }
+    return null;
+  }
+}
+
+// The rest of your code remains unchanged
+// User chat div
+export const userDiv = (data) => {
+  return `
+  <!-- User Chat -->
+  <div class="flex items-center gap-2 justify-start m-2">
+    <img src="human.png" alt="user icon" class="w-10 h-10 rounded-full"/>
+    <div class="bg-gemDeep text-black p-1 rounded-md shadow-md mx-2">${data}</div>
+  </div>
+  `;
+};
+
+// AI chat div with copy button inside the response div
+export const aiDiv = (data) => {
+  return `
+  <!-- AI Chat -->
+  <div class="flex gap-2 justify-end m-2">
+    <div class="bg-gemDeep text-black p-1 rounded-md shadow-md mx-2 relative">
+      <button class="copy-btn absolute top-0 right-0 bg-blue-500 text-white p-1 rounded-md shadow-md mx-2">Copy</button>
+      ${data}
+    </div>
+    <!-- <img src="bot.png" alt="bot icon" class="w-10 h-10 rounded-full"/> -->
+  </div>
+  `;
+};
+
+// NEW FUNCTION: Handle Generate Test Case button click
+// Function to handle generate test case button click
+async function handleGenerateTestCase() {
+  const titleInput = document.getElementById("testcase-title").value;
+  const detailsInput = document.getElementById("testcase-details").value;
+
+  if (titleInput.trim() === "" || detailsInput.trim() === "") {
+    alert("Please fill out both the title and details fields!");
+    return;
+  }
+
+  const chatArea = document.getElementById("chat-container");
+  const userPrompt = `${titleInput}\n${detailsInput}`;
+
+  // Display user message in chat
+  const userContent = userDiv(md.render(userPrompt));
+  chatArea.innerHTML += userContent;
+
+  try {
+    // Get AI response for test case
+    const aiResponse = await getResponse(userPrompt);
+    const md_text = md.render(aiResponse);
+
+    // Display AI response in chat
+    const aiContent = aiDiv(md_text);
+    chatArea.innerHTML += aiContent;
+
+    // Scroll to the last message
+    const newMessage = chatArea.lastElementChild;
+    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Add copy functionality
+    addCopyFunctionality();
+
+    // Store message history
+    history.push({ role: "user", parts: userPrompt });
+    history.push({ role: "model", parts: aiResponse });
+  } catch (error) {
+    console.error("Error getting AI response:", error);
+  }
+}
+
+// Function to handle generate questions button click
+async function handleGenerateQuestions() {
+  const titleInput = document.getElementById("testcase-title").value;
+  const detailsInput = document.getElementById("testcase-details").value;
+
+  if (titleInput.trim() === "" || detailsInput.trim() === "") {
+    alert("Please fill out both the title and details fields!");
+    return;
+  }
+
+  const chatArea = document.getElementById("chat-container");
+  const userPrompt = `${titleInput}\n${detailsInput}`;
+
+  // Display user message in chat
+  const userContent = userDiv(md.render(userPrompt + "\n\n(Generating feature understanding questions)"));
+  chatArea.innerHTML += userContent;
+
+  try {
+    // Get AI response for questions
+    const aiResponse = await getQuestionsResponse(userPrompt);
+    const md_text = md.render(aiResponse);
+
+    // Display AI response in chat
+    const aiContent = aiDiv(md_text);
+    chatArea.innerHTML += aiContent;
+
+    // Scroll to the last message
+    const newMessage = chatArea.lastElementChild;
+    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Add copy functionality
+    addCopyFunctionality();
+
+    // Store message history
+    history.push({ role: "user", parts: userPrompt + " (Generate questions)" });
+    history.push({ role: "model", parts: aiResponse });
+  } catch (error) {
+    console.error("Error getting questions response:", error);
+  }
+}
+
+async function handleSubmit(event) {
+  event.preventDefault();
+
+  let userMessage = document.getElementById("prompt");
+  const chatArea = document.getElementById("chat-container");
+
+  const userPrompt = userMessage.value.trim();
+  if (userPrompt === "") {
+    return;
+  }
+
+  console.log("User message:", userPrompt);
+
+  // Display user message in chat
+  const userContent = userDiv(md.render(userPrompt));
+  chatArea.innerHTML += userContent;
+  userMessage.value = "";
+
+  try {
+    // Get AI response
+    const aiResponse = await getResponse(userPrompt);
+    const md_text = md.render(aiResponse);
+
+    // Display AI response in chat
+    const aiContent = aiDiv(md_text);
+    chatArea.innerHTML += aiContent;
+
+    // Scroll to the start of the new AI content
+    const newMessage = chatArea.lastElementChild;
+    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Store message history
+    history.push({ role: "user", parts: userPrompt });
+    history.push({ role: "model", parts: aiResponse });
+
+    // Add copy functionality
+    addCopyFunctionality();
+
+    console.log("History:", history);
+  } catch (error) {
+    console.error("Error getting AI response:", error);
+  }
+}
+
+const chatForm = document.getElementById("chat-form");
+chatForm.addEventListener("submit", handleSubmit);
+
+chatForm.addEventListener("keyup", (event) => {
+  if (event.keyCode === 13) handleSubmit(event);
+});
+
+// Get the elements
+const chatbotPopup = document.getElementById("chatbot-popup");
+const openChatbotButton = document.getElementById("open-chatbot");
+const closeChatbotButton = document.getElementById("close-chatbot");
+
+// Function to open the chatbot
+const openChatbot = () => {
+  chatbotPopup.style.display = "block";
+};
+
+// Event to open the chatbot
+openChatbotButton.addEventListener("click", openChatbot);
+
+// Event to close the chatbot
+closeChatbotButton.addEventListener("click", () => {
+  chatbotPopup.style.display = "none";
+});
+
+// Open the chatbot by default when the page loads
+document.addEventListener("DOMContentLoaded", openChatbot);
+
+// Function to load test cases from JSON file
+async function loadTestCases() {
+  try {
+    const response = await fetch("/testCasePrompts.json"); // Adjust the path to your JSON file
+    const data = await response.json();
+    testCases = data.testCases;
+    return testCases;
+  } catch (error) {
+    console.error("Error loading test cases:", error);
+    return [];
+  }
+}
+
+// Helper function to render AI response
+function renderAIResponse(aiResponse) {
+  const chatArea = document.getElementById("chat-container");
+  const md_text = md.render(aiResponse);
+  const aiContent = aiDiv(md_text);
+  
+  // Display AI response in chat
+  chatArea.innerHTML += aiContent;
+  
+  // Scroll to the last message
+  const newMessage = chatArea.lastElementChild;
+  newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+  
+  // Add copy functionality
+  addCopyFunctionality();
+}
+
+// UPDATED: Function to handle test case item click
+function handleTestCaseClick(testCase) {
+  return async () => {
+    // Show buttons to choose what to generate
+    const modal = document.createElement("div");
+    modal.className = "test-case-modal";
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h3>Generate for: ${testCase.title}</h3>
+        <div class="modal-buttons">
+          <button id="modal-test-case-btn">Generate Test Case</button>
+          <button id="modal-questions-btn">Generate Questions</button>
+          <button id="modal-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Event listeners for modal buttons
+    document.getElementById("modal-test-case-btn").addEventListener("click", async () => {
+      const aiResponse = await getResponse(
+        `show me test cases: ${testCase.title}\n${testCase.details}`
+      );
+      renderAIResponse(aiResponse);
+      document.body.removeChild(modal);
+    });
+
+    document.getElementById("modal-questions-btn").addEventListener("click", async () => {
+      const aiResponse = await getQuestionsResponse(
+        `${testCase.title}\n${testCase.details}`
+      );
+      renderAIResponse(aiResponse);
+      document.body.removeChild(modal);
+    });
+
+    document.getElementById("modal-cancel-btn").addEventListener("click", () => {
+      document.body.removeChild(modal);
+    });
+  };
+}
+
+// UPDATED: Function to display test cases as clickable list items
+function displayTestCases() {
+  const testCaseList = document.getElementById("test-case-list");
+  testCaseList.innerHTML = ""; // Clear the list before adding items
+
+  testCases.forEach((testCase) => {
+    const listItem = document.createElement("li");
+    listItem.textContent = testCase.title;
+    listItem.classList.add("test-case-item");
+    listItem.addEventListener("click", handleTestCaseClick(testCase));
+    testCaseList.appendChild(listItem);
+  });
+}
+
+// Load and display test cases when the page loads
+document.addEventListener("DOMContentLoaded", async () => {
+  // Setup event listeners for the generate buttons
+  const generateTestCaseBtn = document.getElementById("generate-test-case-btn");
+  const generateQuestionsBtn = document.getElementById("generate-questions-btn");
+  
+  if (generateTestCaseBtn) {
+    generateTestCaseBtn.addEventListener("click", handleGenerateTestCase);
+  }
+  
+  if (generateQuestionsBtn) {
+    generateQuestionsBtn.addEventListener("click", handleGenerateQuestions);
+  }
+
+  await loadTestCases();
+  displayTestCases();
+});
+
+// Function to handle new test case submission
+const testCaseForm = document.getElementById("test-case-form");
+const saveTestCaseBtn = document.getElementById("save-testcase-btn");
+
+saveTestCaseBtn.addEventListener("click", () => {
+  const titleInput = document.getElementById("testcase-title").value;
+  const detailsInput = document.getElementById("testcase-details").value;
+
+  if (titleInput.trim() === "" || detailsInput.trim() === "") {
+    alert("Please fill out both fields!");
+    return;
+  }
+
+  const newTestCase = {
+    title: titleInput,
+    details: detailsInput,
+  };
+
+  // Temporarily add the new test case to the array
+  testCases.push(newTestCase);
+
+  // Update the test case list in the UI
+  displayTestCases();
+
+  // Clear the form inputs
+  document.getElementById("test-case-form").reset();
+
+  // Mock function to save the new test case to a JSON file (you will need to implement this on the backend)
+  saveTestCaseToFile(newTestCase);
+});
+
+// Mock function to save test case to a JSON file
+async function saveTestCaseToFile(testCase) {
+  // Implement an actual API request or backend function to save the test case to the JSON file
+  console.log("Saving test case to file:", testCase);
+}
+
+// Function to add copy functionality to all copy buttons
+function addCopyFunctionality() {
+  const copyBtns = document.querySelectorAll(".copy-btn");
+  copyBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const content = btn.parentElement.innerText; // Corrected to innerText to exclude button text
+      navigator.clipboard
+        .writeText(content)
+        .then(() => {
+          console.log("Copied to clipboard: ", content);
+        })
+        .catch((err) => {
+          console.error("Failed to copy text: ", err);
+        });
+    });
+  });
+}
+
+// Add some CSS for the modal
+const style = document.createElement("style");
+style.textContent = `
+  .test-case-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    max-width: 500px;
+    width: 100%;
+  }
+  
+  .modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+  }
+  
+  .modal-buttons button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  #modal-test-case-btn {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  #modal-questions-btn {
+    background-color: #10b981;
+    color: white;
+  }
+  
+  #modal-cancel-btn {
+    background-color: #ef4444;
+    color: white;
+  }
+`;
+document.head.appendChild(style);
+
+// Function to scroll to the last message
+function scrollToLastMessage(container) {
+  if (container.lastElementChild) {
+    container.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+// Helper function to escape HTML
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Add styles for the Generate buttons
+document.addEventListener("DOMContentLoaded", function() {
+  // Create and append style for generate buttons
+  const btnStyle = document.createElement("style");
+  btnStyle.textContent = `
+    #generate-options {
+      display: flex;
+      justify-content: center;
+      margin: 1rem 0;
+    }
+    
+    #generate-test-case-btn, #generate-questions-btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 5px;
+      transition: background-color 0.3s;
+    }
+    
+    #generate-test-case-btn {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    #generate-test-case-btn:hover {
+      background-color: #2563eb;
+    }
+    
+    #generate-questions-btn {
+      background-color: #10b981;
+      color: white;
+    }
+    
+    #generate-questions-btn:hover {
+      background-color: #059669;
+    }
+  `;
+  document.head.appendChild(btnStyle);
+  
+  // Create and insert generate buttons
+  const testCaseList = document.getElementById("test-case-list");
+  if (testCaseList) {
+    const generateOptions = document.createElement("div");
+    generateOptions.id = "generate-options";
+    generateOptions.innerHTML = `
+      <button type="button" id="generate-test-case-btn">Generate Test Case</button>
+      <button type="button" id="generate-questions-btn">Generate Questions</button>
+    `;
+    
+    // Insert the buttons before the test case list
+    testCaseList.parentNode.insertBefore(generateOptions, testCaseList);
+    
+    // Add event listeners for the buttons
+    document.getElementById("generate-test-case-btn").addEventListener("click", handleGenerateTestCase);
+    document.getElementById("generate-questions-btn").addEventListener("click", handleGenerateQuestions);
+  }
+});
+
+// Function to handle errors in a user-friendly way
+function handleError(error, message = "An error occurred") {
+  console.error(error);
+  const chatArea = document.getElementById("chat-container");
+  if (chatArea) {
+    chatArea.innerHTML += aiDiv(
+      `<div class="ai-content p-2"><p class="text-red-600">${message}: ${escapeHtml(error.message)}</p></div>`
+    );
+    scrollToLastMessage(chatArea);
+  }
+}
+
+// Function to check if the inputs are valid before generating content
+function validateInputs() {
+  const titleInput = document.getElementById("testcase-title").value;
+  const detailsInput = document.getElementById("testcase-details").value;
+  
+  if (titleInput.trim() === "" || detailsInput.trim() === "") {
+    alert("Please fill out both the title and details fields!");
+    return false;
+  }
+  
+  return true;
+}
