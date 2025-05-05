@@ -1,8 +1,21 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai@latest";
 import MarkdownIt from "https://esm.run/markdown-it@13.0.1";
 import { API_KEY } from "./config.js";
-// Import prompts from the separate file
-import { TEST_CASE_PROMPT, QUESTIONS_PROMPT } from "./prompts.js";
+// Import context-aware prompts
+import { 
+  getTestCasePrompt, 
+  getQuestionsPrompt,
+  getTestPlanPrompt,
+  getBugReportPrompt,
+  getExploratoryTestingPrompt,
+  getApiTestingPrompt
+} from "./enhanced-prompts.js";
+// Import context management functions
+import {
+  loadContext,
+  addConversation,
+  clearConversations
+} from "./context.js";
 
 // Initialize markdown parser
 const md = new MarkdownIt();
@@ -30,10 +43,10 @@ let history = [];
 let testCases = [];
 
 // Function to send prompt to the AI model and get response
-// Find this function in main.js
+// Using dynamic context-aware prompt function
 async function getResponse(userPrompt) {
-  // Using the imported prompt instead of hardcoding it
-  const personality = TEST_CASE_PROMPT;
+  // Using dynamic context-aware prompt
+  const personality = getTestCasePrompt();
 
   const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;
 
@@ -45,13 +58,8 @@ async function getResponse(userPrompt) {
 
     console.log("AI response (raw):", text); // Log raw response
 
-    // Update history (using correct format)
-    // Avoid pushing duplicate history entries if this gets called outside handleSubmit/handleTestCaseClick
-    // This logic might need refinement depending on exact flow.
-    // Let's assume history update happens where getResponse is called for now.
-    // history.push({ role: "user", parts: [{ text: userPrompt }] });
-    // history.push({ role: "model", parts: [{ text: text }] });
-    // console.log("Updated History:", history);
+    // Store conversation in persistent context
+    addConversation(userPrompt, text);
 
     return text; // Return the raw Markdown text
   } catch (error) {
@@ -70,10 +78,10 @@ async function getResponse(userPrompt) {
   }
 }
 
-// NEW FUNCTION: Generate feature understanding questions
+// Generate feature understanding questions - Updated with context-aware prompt
 async function getQuestionsResponse(userPrompt) {
-  // Using the imported prompt instead of hardcoding it
-  const personality = QUESTIONS_PROMPT;
+  // Using dynamic context-aware prompt
+  const personality = getQuestionsPrompt();
 
   const fullPrompt = `${personality}\n\nGenerate questions for this feature/ticket:\n${userPrompt}`;
 
@@ -86,6 +94,10 @@ async function getQuestionsResponse(userPrompt) {
     const text = response.text();
 
     console.log("AI response (questions):", text);
+    
+    // Store conversation in persistent context
+    addConversation(userPrompt + " (Generate questions)", text);
+    
     return text;
   } catch (error) {
     console.error("Error communicating with AI for questions:", error);
@@ -102,7 +114,29 @@ async function getQuestionsResponse(userPrompt) {
   }
 }
 
-// The rest of your code remains unchanged
+// NEW - Generate test plan with context-aware prompt
+async function getTestPlanResponse(userPrompt) {
+  const personality = getTestPlanPrompt();
+  const fullPrompt = `${personality}\n\nGenerate a test plan for this feature/project:\n${userPrompt}`;
+
+  try {
+    const chat = model.startChat({ history: [] });
+    const result = await chat.sendMessage(fullPrompt);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log("AI response (test plan):", text);
+    
+    // Store conversation in persistent context
+    addConversation(userPrompt + " (Generate test plan)", text);
+    
+    return text;
+  } catch (error) {
+    console.error("Error generating test plan:", error);
+    return null;
+  }
+}
+
 // User chat div
 export const userDiv = (data) => {
   return `
@@ -128,7 +162,6 @@ export const aiDiv = (data) => {
   `;
 };
 
-// NEW FUNCTION: Handle Generate Test Case button click
 // Function to handle generate test case button click
 async function handleGenerateTestCase() {
   const titleInput = document.getElementById("testcase-title").value;
@@ -162,7 +195,7 @@ async function handleGenerateTestCase() {
     // Add copy functionality
     addCopyFunctionality();
 
-    // Store message history
+    // Store message history for current session
     history.push({ role: "user", parts: userPrompt });
     history.push({ role: "model", parts: aiResponse });
   } catch (error) {
@@ -203,11 +236,52 @@ async function handleGenerateQuestions() {
     // Add copy functionality
     addCopyFunctionality();
 
-    // Store message history
+    // Store message history for current session
     history.push({ role: "user", parts: userPrompt + " (Generate questions)" });
     history.push({ role: "model", parts: aiResponse });
   } catch (error) {
     console.error("Error getting questions response:", error);
+  }
+}
+
+// NEW - Function to handle generate test plan button click
+async function handleGenerateTestPlan() {
+  const titleInput = document.getElementById("testcase-title").value;
+  const detailsInput = document.getElementById("testcase-details").value;
+
+  if (titleInput.trim() === "" || detailsInput.trim() === "") {
+    alert("Please fill out both the title and details fields!");
+    return;
+  }
+
+  const chatArea = document.getElementById("chat-container");
+  const userPrompt = `${titleInput}\n${detailsInput}`;
+
+  // Display user message in chat
+  const userContent = userDiv(md.render(userPrompt + "\n\n(Generating test plan)"));
+  chatArea.innerHTML += userContent;
+
+  try {
+    // Get AI response for test plan
+    const aiResponse = await getTestPlanResponse(userPrompt);
+    const md_text = md.render(aiResponse);
+
+    // Display AI response in chat
+    const aiContent = aiDiv(md_text);
+    chatArea.innerHTML += aiContent;
+
+    // Scroll to the last message
+    const newMessage = chatArea.lastElementChild;
+    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Add copy functionality
+    addCopyFunctionality();
+
+    // Store message history for current session
+    history.push({ role: "user", parts: userPrompt + " (Generate test plan)" });
+    history.push({ role: "model", parts: aiResponse });
+  } catch (error) {
+    console.error("Error getting test plan response:", error);
   }
 }
 
@@ -242,7 +316,7 @@ async function handleSubmit(event) {
     const newMessage = chatArea.lastElementChild;
     newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Store message history
+    // Store message history for current session
     history.push({ role: "user", parts: userPrompt });
     history.push({ role: "model", parts: aiResponse });
 
@@ -255,6 +329,7 @@ async function handleSubmit(event) {
   }
 }
 
+// The rest of your existing code remains the same
 const chatForm = document.getElementById("chat-form");
 chatForm.addEventListener("submit", handleSubmit);
 
@@ -313,7 +388,7 @@ function renderAIResponse(aiResponse) {
   addCopyFunctionality();
 }
 
-// UPDATED: Function to handle test case item click
+// UPDATED: Function to handle test case item click with new options
 function handleTestCaseClick(testCase) {
   return async () => {
     // Show buttons to choose what to generate
@@ -325,6 +400,7 @@ function handleTestCaseClick(testCase) {
         <div class="modal-buttons">
           <button id="modal-test-case-btn">Generate Test Case</button>
           <button id="modal-questions-btn">Generate Questions</button>
+          <button id="modal-test-plan-btn">Generate Test Plan</button>
           <button id="modal-cancel-btn">Cancel</button>
         </div>
       </div>
@@ -347,6 +423,14 @@ function handleTestCaseClick(testCase) {
       renderAIResponse(aiResponse);
       document.body.removeChild(modal);
     });
+    
+    document.getElementById("modal-test-plan-btn").addEventListener("click", async () => {
+      const aiResponse = await getTestPlanResponse(
+        `${testCase.title}\n${testCase.details}`
+      );
+      renderAIResponse(aiResponse);
+      document.body.removeChild(modal);
+    });
 
     document.getElementById("modal-cancel-btn").addEventListener("click", () => {
       document.body.removeChild(modal);
@@ -354,7 +438,7 @@ function handleTestCaseClick(testCase) {
   };
 }
 
-// UPDATED: Function to display test cases as clickable list items
+// Function to display test cases as clickable list items
 function displayTestCases() {
   const testCaseList = document.getElementById("test-case-list");
   testCaseList.innerHTML = ""; // Clear the list before adding items
@@ -373,6 +457,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Setup event listeners for the generate buttons
   const generateTestCaseBtn = document.getElementById("generate-test-case-btn");
   const generateQuestionsBtn = document.getElementById("generate-questions-btn");
+  const generateTestPlanBtn = document.getElementById("generate-test-plan-btn");
   
   if (generateTestCaseBtn) {
     generateTestCaseBtn.addEventListener("click", handleGenerateTestCase);
@@ -381,11 +466,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (generateQuestionsBtn) {
     generateQuestionsBtn.addEventListener("click", handleGenerateQuestions);
   }
+  
+  if (generateTestPlanBtn) {
+    generateTestPlanBtn.addEventListener("click", handleGenerateTestPlan);
+  }
 
   await loadTestCases();
   displayTestCases();
+  
+  // Initialize context management UI elements
+  initContextUI();
 });
 
+// Function to handle new test case submission
 // Function to handle new test case submission
 const testCaseForm = document.getElementById("test-case-form");
 const saveTestCaseBtn = document.getElementById("save-testcase-btn");
@@ -421,6 +514,27 @@ saveTestCaseBtn.addEventListener("click", () => {
 async function saveTestCaseToFile(testCase) {
   // Implement an actual API request or backend function to save the test case to the JSON file
   console.log("Saving test case to file:", testCase);
+  
+  // In the future, you might want to implement actual persistence
+  // For now, let's also save this in localStorage as a backup
+  try {
+    // Get existing test cases from localStorage
+    const savedTestCases = localStorage.getItem('savedTestCases');
+    let testCaseArray = [];
+    
+    if (savedTestCases) {
+      testCaseArray = JSON.parse(savedTestCases);
+    }
+    
+    // Add the new test case
+    testCaseArray.push(testCase);
+    
+    // Save back to localStorage
+    localStorage.setItem('savedTestCases', JSON.stringify(testCaseArray));
+    console.log('Test case also saved to localStorage for backup');
+  } catch (error) {
+    console.error('Error saving test case to localStorage:', error);
+  }
 }
 
 // Function to add copy functionality to all copy buttons
@@ -433,68 +547,20 @@ function addCopyFunctionality() {
         .writeText(content)
         .then(() => {
           console.log("Copied to clipboard: ", content);
+          // Update button text temporarily to provide feedback
+          const originalText = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
         })
         .catch((err) => {
           console.error("Failed to copy text: ", err);
+          alert("Failed to copy text. Please try again.");
         });
     });
   });
 }
-
-// Add some CSS for the modal
-const style = document.createElement("style");
-style.textContent = `
-  .test-case-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  
-  .modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    max-width: 500px;
-    width: 100%;
-  }
-  
-  .modal-buttons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-  }
-  
-  .modal-buttons button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  
-  #modal-test-case-btn {
-    background-color: #3b82f6;
-    color: white;
-  }
-  
-  #modal-questions-btn {
-    background-color: #10b981;
-    color: white;
-  }
-  
-  #modal-cancel-btn {
-    background-color: #ef4444;
-    color: white;
-  }
-`;
-document.head.appendChild(style);
 
 // Function to scroll to the last message
 function scrollToLastMessage(container) {
@@ -512,66 +578,6 @@ function escapeHtml(unsafe) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-// Add styles for the Generate buttons
-document.addEventListener("DOMContentLoaded", function() {
-  // Create and append style for generate buttons
-  const btnStyle = document.createElement("style");
-  btnStyle.textContent = `
-    #generate-options {
-      display: flex;
-      justify-content: center;
-      margin: 1rem 0;
-    }
-    
-    #generate-test-case-btn, #generate-questions-btn {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 4px;
-      font-weight: bold;
-      cursor: pointer;
-      margin: 0 5px;
-      transition: background-color 0.3s;
-    }
-    
-    #generate-test-case-btn {
-      background-color: #3b82f6;
-      color: white;
-    }
-    
-    #generate-test-case-btn:hover {
-      background-color: #2563eb;
-    }
-    
-    #generate-questions-btn {
-      background-color: #10b981;
-      color: white;
-    }
-    
-    #generate-questions-btn:hover {
-      background-color: #059669;
-    }
-  `;
-  document.head.appendChild(btnStyle);
-  
-  // Create and insert generate buttons
-  const testCaseList = document.getElementById("test-case-list");
-  if (testCaseList) {
-    const generateOptions = document.createElement("div");
-    generateOptions.id = "generate-options";
-    generateOptions.innerHTML = `
-      <button type="button" id="generate-test-case-btn">Generate Test Case</button>
-      <button type="button" id="generate-questions-btn">Generate Questions</button>
-    `;
-    
-    // Insert the buttons before the test case list
-    testCaseList.parentNode.insertBefore(generateOptions, testCaseList);
-    
-    // Add event listeners for the buttons
-    document.getElementById("generate-test-case-btn").addEventListener("click", handleGenerateTestCase);
-    document.getElementById("generate-questions-btn").addEventListener("click", handleGenerateQuestions);
-  }
-});
 
 // Function to handle errors in a user-friendly way
 function handleError(error, message = "An error occurred") {
@@ -596,4 +602,134 @@ function validateInputs() {
   }
   
   return true;
+}
+
+// Load saved test cases from localStorage when starting
+document.addEventListener('DOMContentLoaded', function() {
+  try {
+    const savedTestCases = localStorage.getItem('savedTestCases');
+    if (savedTestCases) {
+      const parsedTestCases = JSON.parse(savedTestCases);
+      // Merge with any test cases loaded from JSON file
+      testCases = [...testCases, ...parsedTestCases];
+      console.log('Loaded test cases from localStorage:', testCases);
+      // Update the UI
+      displayTestCases();
+    }
+  } catch (error) {
+    console.error('Error loading test cases from localStorage:', error);
+  }
+});
+// Function to initialize context management UI
+function initContextUI() {
+  // Create context management section if elements don't exist yet
+  const editContextBtn = document.getElementById("edit-context-btn");
+  const viewContextBtn = document.getElementById("view-context-btn");
+  const clearHistoryBtn = document.getElementById("clear-history-btn");
+  const resetContextBtn = document.getElementById("reset-context-btn");
+  
+  // Set up event listeners if buttons exist
+  if (editContextBtn) {
+    editContextBtn.addEventListener("click", showContextEditor);
+  }
+  
+  if (viewContextBtn) {
+    viewContextBtn.addEventListener("click", viewCurrentContext);
+  }
+  
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener("click", clearConversationHistory);
+  }
+  
+  if (resetContextBtn) {
+    resetContextBtn.addEventListener("click", resetToDefault);
+  }
+}
+
+// Function to show context editor modal
+function showContextEditor() {
+  const context = loadContext();
+  
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'context-modal';
+  modal.innerHTML = `
+    <div class="context-modal-content">
+      <h3 class="text-xl font-bold mb-4">Edit Application Documentation</h3>
+      <p class="mb-4">Update the application documentation to help the AI generate better test cases and questions.</p>
+      <textarea id="context-editor" class="w-full h-96 p-2 border rounded mb-4" spellcheck="false">${context.appDocumentation}</textarea>
+      <div class="modal-buttons">
+        <button id="save-context-btn" class="bg-blue-500 text-white p-2 rounded">Save Changes</button>
+        <button id="cancel-context-btn" class="bg-gray-500 text-white p-2 rounded ml-2">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Add event listeners
+  document.getElementById('save-context-btn').addEventListener('click', () => {
+    const newDocumentation = document.getElementById('context-editor').value;
+    updateAppDocumentation(newDocumentation);
+    document.body.removeChild(modal);
+    alert('Application documentation updated successfully!');
+  });
+  
+  document.getElementById('cancel-context-btn').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+}
+
+// Function to view current context
+function viewCurrentContext() {
+  const context = loadContext();
+  
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'context-modal';
+  modal.innerHTML = `
+    <div class="context-modal-content">
+      <h3 class="text-xl font-bold mb-4">Current Application Context</h3>
+      <div class="mb-4">
+        <h4 class="font-bold">App Documentation:</h4>
+        <pre class="context-preview p-2 border rounded">${context.appDocumentation}</pre>
+      </div>
+      <div class="mb-4">
+        <h4 class="font-bold">Conversation History (${context.conversations?.length || 0} entries):</h4>
+        <div class="context-preview p-2 border rounded h-40 overflow-auto">
+          ${context.conversations?.length ? 
+            context.conversations.map((conv, i) => 
+              `<div class="mb-2 pb-2 border-b">
+                <strong>#${i+1}:</strong> ${conv.userPrompt.substring(0, 50)}${conv.userPrompt.length > 50 ? '...' : ''}
+              </div>`
+            ).join('') : 
+            'No conversation history.'}
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="close-view-btn" class="bg-blue-500 text-white p-2 rounded">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Add event listener
+  document.getElementById('close-view-btn').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+}
+
+// Function to clear conversation history
+function clearConversationHistory() {
+  if (confirm('Are you sure you want to clear the conversation history?')) {
+    clearConversations();
+    alert('Conversation history cleared!');
+  }
+}
+
+// Function to reset context to default
+function resetToDefault() {
+  if (confirm('Are you sure you want to reset the app context to default? This will clear all conversation history and documentation changes.')) {
+    resetContext();
+    alert('App context reset to default!');
+  }
 }
