@@ -73,6 +73,14 @@ This document describes the UI components and functionality of our application t
 - Desktop: Full featured interface
 - Tablet: Condensed navigation, optimized layouts
 - Mobile: Hamburger menu, stacked layouts, touch-optimized controls
+
+## Photo Uploading
+- Files can be uploaded to collections from either a computer or a mobile device
+- Uploads can be JPEG, PNG, or RAW files up to 100 MB, or GIF files up to 85 MB. 
+- On a computer, images can also be uploaded by dragging the files directly into the collection
+- After files are added to the upload queue, the overall progress will be displayed in the Upload Bar
+- Each image should have a unique filename, as it is not possible to have images with the same filename in the same set. While it is possible to upload images with the same filename to different sets in the same collection, it is not recommended as it can cause issues when it comes to favorites and downloads
+
 `;
 
 // Functions to save and load context from localStorage

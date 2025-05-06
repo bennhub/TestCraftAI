@@ -163,6 +163,7 @@ export const aiDiv = (data) => {
 };
 
 // Function to handle generate test case button click
+// Function to handle generate test case button click
 async function handleGenerateTestCase() {
   const titleInput = document.getElementById("testcase-title").value;
   const detailsInput = document.getElementById("testcase-details").value;
@@ -198,11 +199,17 @@ async function handleGenerateTestCase() {
     // Store message history for current session
     history.push({ role: "user", parts: userPrompt });
     history.push({ role: "model", parts: aiResponse });
+
+    // Clear input form
+    document.getElementById("testcase-title").value = "";
+    document.getElementById("testcase-details").value = "";
   } catch (error) {
     console.error("Error getting AI response:", error);
   }
 }
 
+
+// Function to handle generate questions button click
 // Function to handle generate questions button click
 async function handleGenerateQuestions() {
   const titleInput = document.getElementById("testcase-title").value;
@@ -239,10 +246,15 @@ async function handleGenerateQuestions() {
     // Store message history for current session
     history.push({ role: "user", parts: userPrompt + " (Generate questions)" });
     history.push({ role: "model", parts: aiResponse });
+
+    // Clear input form
+    document.getElementById("testcase-title").value = "";
+    document.getElementById("testcase-details").value = "";
   } catch (error) {
     console.error("Error getting questions response:", error);
   }
 }
+
 
 // NEW - Function to handle generate test plan button click
 async function handleGenerateTestPlan() {

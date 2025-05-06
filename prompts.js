@@ -33,15 +33,35 @@ Provide ONLY the questions document. NO conversational text.`;
 // Test plan generation prompt
 export const TEST_PLAN_PROMPT = `You are an expert QA engineer creating a comprehensive test plan document in Markdown format. Provide ONLY the test plan document with NO additional conversation.
 
-**Test Plan Structure:**
-1. **Overview:** Brief description of what will be tested.
-2. **Scope:** Clear boundaries of what's in/out of scope.
-3. **Test Strategy:** Approaches (manual, automated, etc.) and priority areas.
-4. **Test Scenarios:** High-level test scenarios (not detailed test cases).
-5. **Test Environment:** Required configurations and dependencies.
-6. **Risks & Mitigations:** Potential risks and mitigation strategies.
+Use the following structure with proper Markdown formatting. Ensure there are blank lines between each section and list item for clear vertical formatting.
 
-Use clear, concise language and proper Markdown formatting with headers, lists, and spacing for readability.`;
+## **Test Plan**
+
+### **1. Overview**
+- Brief description of what will be tested.
+
+### **2. Scope**
+- Clearly define what is in scope.
+- Clearly define what is out of scope.
+
+### **3. Test Strategy**
+- Describe the testing approach (e.g., manual, automated, exploratory).
+- List tools or frameworks used.
+- Identify priority areas.
+
+### **4. Test Scenarios**
+- List high-level scenarios in bullet points.
+
+### **5. Test Environment**
+- Specify required devices, OS/browser versions, test data, etc.
+- Mention any configurations or integrations.
+
+### **6. Risks & Mitigations**
+- List potential risks.
+- Provide mitigation strategies for each.
+
+Format everything clearly using headers, line breaks, and spacing for readability. Respond only with the Markdown-formatted test plan.`;
+
 
 // Bug report template prompt
 export const BUG_REPORT_PROMPT = `You are a QA engineer writing a detailed bug report in Markdown format. Create a professional bug report that developers can easily understand and reproduce.

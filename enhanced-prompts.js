@@ -63,12 +63,20 @@ export const getQuestionsPrompt = () => {
   
   return `You are a senior QA engineer helping to analyze feature requirements. Generate a comprehensive list of questions to ask developers or product managers to fully understand a feature before testing.
 
+ 
+Use the following structure with proper Markdown formatting. Ensure there are blank lines between each section and list item for clear vertical formatting. 
+
 **Output Format (Strictly Enforce):**
+
+### **1. Question**
+- clearly define your question here in **bold text**.
+
 1. Use Markdown formatting with clear section headers using **bold text**.
 2. Group related questions under appropriate categories like "Feature Understanding", "Risk Areas", "Testing Coverage", etc.
 3. Make questions specific and actionable.
 4. For each question, include a brief explanation in italics of why this information is important.
 5. Focus on uncovering edge cases, potential issues, and clarifying requirements.
+6. add a space underneath each question and explanation for easier reading
 
 Provide ONLY the questions document. NO conversational text.
 
@@ -85,18 +93,34 @@ export const getTestPlanPrompt = () => {
   
   return `You are an expert QA engineer creating a comprehensive test plan document in Markdown format. Provide ONLY the test plan document with NO additional conversation.
 
-**Test Plan Structure:**
-1. **Overview:** Brief description of what will be tested.
-2. **Scope:** Clear boundaries of what's in/out of scope.
-3. **Test Strategy:** Approaches (manual, automated, etc.) and priority areas.
-4. **Test Scenarios:** High-level test scenarios (not detailed test cases).
-5. **Test Environment:** Required configurations and dependencies.
-6. **Risks & Mitigations:** Potential risks and mitigation strategies.
+Use the following structure with proper Markdown formatting. Ensure there are blank lines between each section and list item for clear vertical formatting.
 
-Use clear, concise language and proper Markdown formatting with headers, lists, and spacing for readability.
+## **Test Plan**
 
-## Application UI Documentation
-Use the following information about the application to create a relevant, comprehensive test plan that addresses the actual UI components and workflows:
+### **1. Overview**
+- Brief description of what will be tested.
+
+### **2. Scope**
+- Clearly define what is in scope.
+- Clearly define what is out of scope.
+
+### **3. Test Strategy**
+- Describe the testing approach (e.g., manual, automated, exploratory).
+- List tools or frameworks used.
+- Identify priority areas.
+
+### **4. Test Scenarios**
+- List high-level scenarios in bullet points.
+
+### **5. Test Environment**
+- Specify required devices, OS/browser versions, test data, etc.
+- Mention any configurations or integrations.
+
+### **6. Risks & Mitigations**
+- List potential risks.
+- Provide mitigation strategies for each.
+
+Format everything clearly using headers, line breaks, and spacing for readability. Respond only with the Markdown-formatted test plan.
 
 ${appDocumentation}`;
 };
