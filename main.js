@@ -646,6 +646,18 @@ function initContextUI() {
   }
 }
 
+function updateAppDocumentation(newDocumentation) {
+  try {
+    const currentContext = loadContext(); // Assuming you have this function
+    currentContext.appDocumentation = newDocumentation;
+    localStorage.setItem("appContext", JSON.stringify(currentContext)); // Save it
+    console.log("App documentation updated");
+  } catch (error) {
+    console.error("Failed to update app documentation:", error);
+  }
+}
+
+
 // Function to show context editor modal
 function showContextEditor() {
   const context = loadContext();
