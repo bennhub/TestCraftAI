@@ -14,7 +14,8 @@ import {
 import {
   loadContext,
   addConversation,
-  clearConversations
+  clearConversations,
+  resetContext
 } from "./context.js";
 
 // Initialize markdown parser
@@ -27,11 +28,7 @@ if (!API_KEY || API_KEY === "") {
   alert(
     "ERROR: API Key is missing or not set in config.js. Please create config.js and add your API key."
   );
-  // You might want to prevent further execution or disable functionality here
-  // For simplicity, we'll log an error, but the API call will likely fail.
   console.error("API Key is missing or not set in config.js!");
-  // Optionally throw an error to stop script execution:
-  // throw new Error("API Key configuration error.");
 }
 
 // Initialize the model with the updated version
@@ -43,30 +40,30 @@ let history = [];
 let testCases = [];
 
 // Function to send prompt to the AI model and get response
-// Using dynamic context-aware prompt function
 async function getResponse(userPrompt) {
   // Using dynamic context-aware prompt
   const personality = getTestCasePrompt();
-
   const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;
 
   try {
-    const chat = model.startChat({ history: history });
-    const result = await chat.sendMessage(fullPrompt);
+    // Create a fresh chat instance without history to avoid conflicts
+    const chat = model.startChat();
+    
+    // Send message in the format required by the latest Google Generative AI library
+    const result = await chat.sendMessage([{text: fullPrompt}]);
     const response = await result.response;
     const text = response.text();
 
-    console.log("AI response (raw):", text); // Log raw response
+    console.log("AI response (raw):", text);
 
     // Store conversation in persistent context
     addConversation(userPrompt, text);
 
-    return text; // Return the raw Markdown text
+    return text;
   } catch (error) {
     console.error("Error communicating with AI:", error);
     const chatArea = document.getElementById("chat-container");
     if (chatArea) {
-      // Use aiDiv structure for consistency, passing simple HTML
       chatArea.innerHTML += aiDiv(
         `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(
           error.message
@@ -78,18 +75,17 @@ async function getResponse(userPrompt) {
   }
 }
 
-// Generate feature understanding questions - Updated with context-aware prompt
+// Generate feature understanding questions
 async function getQuestionsResponse(userPrompt) {
-  // Using dynamic context-aware prompt
   const personality = getQuestionsPrompt();
-
   const fullPrompt = `${personality}\n\nGenerate questions for this feature/ticket:\n${userPrompt}`;
 
   try {
-    // Use the same format that works in getResponse
-    const chat = model.startChat({ history: [] });
-    const result = await chat.sendMessage(fullPrompt);  // Simple string format
+    // Use a fresh chat instance without history to avoid conflicts
+    const chat = model.startChat();
     
+    // Send message in the format required by the latest Google Generative AI library
+    const result = await chat.sendMessage([{text: fullPrompt}]);
     const response = await result.response;
     const text = response.text();
 
@@ -114,14 +110,17 @@ async function getQuestionsResponse(userPrompt) {
   }
 }
 
-// NEW - Generate test plan with context-aware prompt
+// Generate test plan
 async function getTestPlanResponse(userPrompt) {
   const personality = getTestPlanPrompt();
   const fullPrompt = `${personality}\n\nGenerate a test plan for this feature/project:\n${userPrompt}`;
 
   try {
-    const chat = model.startChat({ history: [] });
-    const result = await chat.sendMessage(fullPrompt);
+    // Use a fresh chat instance without history to avoid conflicts
+    const chat = model.startChat();
+    
+    // Send message in the format required by the latest Google Generative AI library
+    const result = await chat.sendMessage([{text: fullPrompt}]);
     const response = await result.response;
     const text = response.text();
 
@@ -163,7 +162,6 @@ export const aiDiv = (data) => {
 };
 
 // Function to handle generate test case button click
-// Function to handle generate test case button click
 async function handleGenerateTestCase() {
   const titleInput = document.getElementById("testcase-title").value;
   const detailsInput = document.getElementById("testcase-details").value;
@@ -183,33 +181,32 @@ async function handleGenerateTestCase() {
   try {
     // Get AI response for test case
     const aiResponse = await getResponse(userPrompt);
-    const md_text = md.render(aiResponse);
+    
+    if (aiResponse) {
+      const md_text = md.render(aiResponse);
 
-    // Display AI response in chat
-    const aiContent = aiDiv(md_text);
-    chatArea.innerHTML += aiContent;
+      // Display AI response in chat
+      const aiContent = aiDiv(md_text);
+      chatArea.innerHTML += aiContent;
 
-    // Scroll to the last message
-    const newMessage = chatArea.lastElementChild;
-    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Scroll to the last message
+      const newMessage = chatArea.lastElementChild;
+      newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Add copy functionality
-    addCopyFunctionality();
+      // Add copy functionality
+      addCopyFunctionality();
 
-    // Store message history for current session
-    history.push({ role: "user", parts: userPrompt });
-    history.push({ role: "model", parts: aiResponse });
-
-    // Clear input form
-    document.getElementById("testcase-title").value = "";
-    document.getElementById("testcase-details").value = "";
+      // Store message history for current session
+      history.push({ role: "user", parts: [{text: userPrompt}] });
+      history.push({ role: "model", parts: [{text: aiResponse}] });
+    }
+    
+    // DO NOT clear input form - removed those lines to keep fields populated
   } catch (error) {
     console.error("Error getting AI response:", error);
   }
 }
 
-
-// Function to handle generate questions button click
 // Function to handle generate questions button click
 async function handleGenerateQuestions() {
   const titleInput = document.getElementById("testcase-title").value;
@@ -230,33 +227,33 @@ async function handleGenerateQuestions() {
   try {
     // Get AI response for questions
     const aiResponse = await getQuestionsResponse(userPrompt);
-    const md_text = md.render(aiResponse);
+    
+    if (aiResponse) {
+      const md_text = md.render(aiResponse);
 
-    // Display AI response in chat
-    const aiContent = aiDiv(md_text);
-    chatArea.innerHTML += aiContent;
+      // Display AI response in chat
+      const aiContent = aiDiv(md_text);
+      chatArea.innerHTML += aiContent;
 
-    // Scroll to the last message
-    const newMessage = chatArea.lastElementChild;
-    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Scroll to the last message
+      const newMessage = chatArea.lastElementChild;
+      newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Add copy functionality
-    addCopyFunctionality();
+      // Add copy functionality
+      addCopyFunctionality();
 
-    // Store message history for current session
-    history.push({ role: "user", parts: userPrompt + " (Generate questions)" });
-    history.push({ role: "model", parts: aiResponse });
-
-    // Clear input form
-    document.getElementById("testcase-title").value = "";
-    document.getElementById("testcase-details").value = "";
+      // Store message history for current session
+      history.push({ role: "user", parts: [{text: userPrompt + " (Generate questions)"}] });
+      history.push({ role: "model", parts: [{text: aiResponse}] });
+    }
+    
+    // DO NOT clear input form - removed those lines to keep fields populated
   } catch (error) {
     console.error("Error getting questions response:", error);
   }
 }
 
-
-// NEW - Function to handle generate test plan button click
+// Function to handle generate test plan button click
 async function handleGenerateTestPlan() {
   const titleInput = document.getElementById("testcase-title").value;
   const detailsInput = document.getElementById("testcase-details").value;
@@ -276,27 +273,33 @@ async function handleGenerateTestPlan() {
   try {
     // Get AI response for test plan
     const aiResponse = await getTestPlanResponse(userPrompt);
-    const md_text = md.render(aiResponse);
+    
+    if (aiResponse) {
+      const md_text = md.render(aiResponse);
 
-    // Display AI response in chat
-    const aiContent = aiDiv(md_text);
-    chatArea.innerHTML += aiContent;
+      // Display AI response in chat
+      const aiContent = aiDiv(md_text);
+      chatArea.innerHTML += aiContent;
 
-    // Scroll to the last message
-    const newMessage = chatArea.lastElementChild;
-    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Scroll to the last message
+      const newMessage = chatArea.lastElementChild;
+      newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Add copy functionality
-    addCopyFunctionality();
+      // Add copy functionality
+      addCopyFunctionality();
 
-    // Store message history for current session
-    history.push({ role: "user", parts: userPrompt + " (Generate test plan)" });
-    history.push({ role: "model", parts: aiResponse });
+      // Store message history for current session
+      history.push({ role: "user", parts: [{text: userPrompt + " (Generate test plan)"}] });
+      history.push({ role: "model", parts: [{text: aiResponse}] });
+    }
+    
+    // DO NOT clear input form - removed those lines to keep fields populated
   } catch (error) {
     console.error("Error getting test plan response:", error);
   }
 }
 
+// Function to handle submit for chat
 async function handleSubmit(event) {
   event.preventDefault();
 
@@ -318,24 +321,27 @@ async function handleSubmit(event) {
   try {
     // Get AI response
     const aiResponse = await getResponse(userPrompt);
-    const md_text = md.render(aiResponse);
+    
+    if (aiResponse) {
+      const md_text = md.render(aiResponse);
 
-    // Display AI response in chat
-    const aiContent = aiDiv(md_text);
-    chatArea.innerHTML += aiContent;
+      // Display AI response in chat
+      const aiContent = aiDiv(md_text);
+      chatArea.innerHTML += aiContent;
 
-    // Scroll to the start of the new AI content
-    const newMessage = chatArea.lastElementChild;
-    newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Scroll to the start of the new AI content
+      const newMessage = chatArea.lastElementChild;
+      newMessage.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    // Store message history for current session
-    history.push({ role: "user", parts: userPrompt });
-    history.push({ role: "model", parts: aiResponse });
+      // Add copy functionality
+      addCopyFunctionality();
 
-    // Add copy functionality
-    addCopyFunctionality();
+      // Store message history for current session
+      history.push({ role: "user", parts: [{text: userPrompt}] });
+      history.push({ role: "model", parts: [{text: aiResponse}] });
 
-    console.log("History:", history);
+      console.log("History:", history);
+    }
   } catch (error) {
     console.error("Error getting AI response:", error);
   }
@@ -385,6 +391,8 @@ async function loadTestCases() {
 
 // Helper function to render AI response
 function renderAIResponse(aiResponse) {
+  if (!aiResponse) return;
+  
   const chatArea = document.getElementById("chat-container");
   const md_text = md.render(aiResponse);
   const aiContent = aiDiv(md_text);
@@ -453,6 +461,8 @@ function handleTestCaseClick(testCase) {
 // Function to display test cases as clickable list items
 function displayTestCases() {
   const testCaseList = document.getElementById("test-case-list");
+  if (!testCaseList) return;
+  
   testCaseList.innerHTML = ""; // Clear the list before adding items
 
   testCases.forEach((testCase) => {
@@ -491,36 +501,36 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Function to handle new test case submission
-// Function to handle new test case submission
-const testCaseForm = document.getElementById("test-case-form");
 const saveTestCaseBtn = document.getElementById("save-testcase-btn");
 
-saveTestCaseBtn.addEventListener("click", () => {
-  const titleInput = document.getElementById("testcase-title").value;
-  const detailsInput = document.getElementById("testcase-details").value;
+if (saveTestCaseBtn) {
+  saveTestCaseBtn.addEventListener("click", () => {
+    const titleInput = document.getElementById("testcase-title").value;
+    const detailsInput = document.getElementById("testcase-details").value;
 
-  if (titleInput.trim() === "" || detailsInput.trim() === "") {
-    alert("Please fill out both fields!");
-    return;
-  }
+    if (titleInput.trim() === "" || detailsInput.trim() === "") {
+      alert("Please fill out both fields!");
+      return;
+    }
 
-  const newTestCase = {
-    title: titleInput,
-    details: detailsInput,
-  };
+    const newTestCase = {
+      title: titleInput,
+      details: detailsInput,
+    };
 
-  // Temporarily add the new test case to the array
-  testCases.push(newTestCase);
+    // Temporarily add the new test case to the array
+    testCases.push(newTestCase);
 
-  // Update the test case list in the UI
-  displayTestCases();
+    // Update the test case list in the UI
+    displayTestCases();
 
-  // Clear the form inputs
-  document.getElementById("test-case-form").reset();
+    // Clear the form inputs
+    document.getElementById("test-case-form").reset();
 
-  // Mock function to save the new test case to a JSON file (you will need to implement this on the backend)
-  saveTestCaseToFile(newTestCase);
-});
+    // Mock function to save the new test case to a JSON file (you will need to implement this on the backend)
+    saveTestCaseToFile(newTestCase);
+  });
+}
 
 // Mock function to save test case to a JSON file
 async function saveTestCaseToFile(testCase) {
@@ -632,6 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.error('Error loading test cases from localStorage:', error);
   }
 });
+
 // Function to initialize context management UI
 function initContextUI() {
   // Create context management section if elements don't exist yet
@@ -668,7 +679,6 @@ function updateAppDocumentation(newDocumentation) {
     console.error("Failed to update app documentation:", error);
   }
 }
-
 
 // Function to show context editor modal
 function showContextEditor() {
@@ -742,6 +752,18 @@ function viewCurrentContext() {
   });
 }
 
+// Function to save the context as a TXT file
+function saveContextToFile() {
+  const textData = DEFAULT_APP_CONTEXT;  // or dynamically load context here
+  const blob = new Blob([textData], { type: 'text/plain' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "appContext.txt";  // The name of the file to download
+
+  // Programmatically click the link to trigger the download
+  link.click();
+}
+
 // Function to clear conversation history
 function clearConversationHistory() {
   if (confirm('Are you sure you want to clear the conversation history?')) {
@@ -757,3 +779,14 @@ function resetToDefault() {
     alert('App context reset to default!');
   }
 }
+
+// Add event listener for save context button if it exists
+document.addEventListener("DOMContentLoaded", () => {
+  const saveButton = document.getElementById("save-context-btn");
+
+  if (saveButton) {
+    saveButton.addEventListener("click", () => {
+      saveContextToFile();
+    });
+  }
+});

@@ -424,6 +424,45 @@ select {
   background-color: #f5f5f5;
 }
 
+/* Save button styling */
+.context-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.context-button:hover {
+  background-color: #2b6cb0; /* Darker blue on hover */
+  transform: scale(1.05); /* Slightly enlarge button on hover */
+}
+
+.context-button:active {
+  background-color: #1e4c8f; /* Even darker blue when clicked */
+}
+
+.context-button.btn-blue {
+  background-color: #3182ce; /* Light blue background */
+  color: white;
+  border: none;
+}
+
+.context-button.btn-blue:hover {
+  background-color: #2b6cb0; /* Darker blue on hover */
+}
+
+.context-button.btn-blue:active {
+  background-color: #1e4c8f; /* Dark blue when clicked */
+}
+
+.context-button.btn-blue:focus {
+  outline: none; /* Remove outline on focus */
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.5); /* Add focus effect */
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .main-content {

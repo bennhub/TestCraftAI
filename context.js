@@ -81,6 +81,80 @@ This document describes the UI components and functionality of our application t
 - After files are added to the upload queue, the overall progress will be displayed in the Upload Bar
 - Each image should have a unique filename, as it is not possible to have images with the same filename in the same set. While it is possible to upload images with the same filename to different sets in the same collection, it is not recommended as it can cause issues when it comes to favorites and downloads
 
+## Video Uploading
+ - Users can upload videos in MP4, MOV, AVI, or M4V. Video files are not limited by file size or dimensions, so users can upload videos of any size
+
+ - Video Resolutions: up to 4K
+ - On the Basic or Plus [Client Gallery plans](https://pixieset.com/pricing/), videos will be delivered up to 1080p (1920 x 1080px).
+
+- On the Pro or Ultimate [Client Gallery](https://pixieset.com/pricing/) or [Suite plans](https://pixieset.com/pricing-suite/), videos will be delivered up to 4K resolution (3840 x 2160px).
+
+ - Upload Process: Videos can be uploaded to any account with an upgraded Client Gallery or Suite plan, and will automatically appear at the top of the collection (above any uploaded photos) in the users dashboard. 
+
+ ## Uploading Video Steps
+
+1. Go to any collection in the [dashboard](https://pixieset.com/collection/)
+2. Click **+ Add Media** on the top right to open the Upload Modal - this appears by default when there are no files in the set. 
+3. Drag video files into the modal or click **Browse Files ** to select files locally
+
+ - On a computer, videos can also be uploaded by dragging the files directly into the collection
+
+### Processing
+ - After files are added to the upload queue, the overall progress will be displayed in the Upload Bar on the bottom right
+
+## Invalid Video
+ - If the user has tried to upload a video file with export settings (resolution, codec, bitrate) that are not supported & playable by their browser, and/or are not supported by Pixieset, they will run into a File isnt a valid video error
+
+ ## Client Side for Video
+ # End Client Side
+
+Uploaded videos will automatically appear within the set they were uploaded to, separately above the photos in that set. If multiple videos have been uploaded, they will appear stacked above each other, above the photos.
+
+The video in the gallery is shown at the full/original size the user uploaded, up to the limit of their current plan. (i.e. 1080p for CG Basic/Plus and Suite Starter, 4K for CG Pro/Ultimate and Suite Pro/Ultimate)
+
+## Agent Side Video 
+You can view uploaded videos in any collection in the Admin dashboard.
+
+1. Locate the users account
+2. Click into **Collections**
+3. Open the collection in question. The number of videos in each set will be listed. Click **View** to open any specific set.
+4. Video files will be listed at the bottom, below all the photos.
+5. Clicking on the ID # for the video will take you to that video file directly, where you can review file details such as the duration (in seconds), size, dimensions, and when the file was created/uploaded. 
+
+## User Side Embedding Videos
+
+Users can embed a video into any set within their collections. They will first upload their video to YouTube or Vimeo, and then add the URL to the video to embed it into their gallery.
+
+<aside>
+The privacy settings for the videos must *allow embedding* and be set to **Public** or **Unlisted** (YouTube) or **Public**, **Unlisted** or **Hidden from Vimeo but Embeddable everywhere** (Vimeo).
+
+</aside>
+Once the video has been uploaded to YouTube or Vimeo, the user can:
+
+1. Go to any collection in their dashboard
+2. Click **+ Add Media** and select **Embed** to open the video embedding modal.
+3. Add the video URL from YouTube or Vimeo, then click Add Video. Embedded videos will appear at the top of the collection, above the photos.
+
+## End Client Side Embeddding Videos
+
+ - Embedded videos will appear in the gallery, above the photo grid. If multiple videos have been added, they will appear stacked on top of each other, above the photo grid.
+ - Embedded videos cannot be downloaded directly from the gallery.
+
+ ## Agent Side Embedding Videos
+
+You can view embedded videos in any collection in the Admin dashboard.
+
+1. Locate the users account
+2. Click into **Collections**
+3. Open the collection in question. The number of videos in each set will be listed. Click **View** to open any specific set.
+    
+    ![sets.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/6af1d910-b3cc-4b0b-9dc7-3e41663423ec/sets.png)
+    
+4. Video files will be listed at the bottom, below all the photos.
+    
+    ![embedded-videos.png](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/3894a033-6cac-4a05-ae21-49caf86206ca/embedded-videos.png)
+    
+5. Clicking on the ID # for the video will take you to that videos information directly, where you can review details such as the video URL, and when the video was added to the gallery.
 `;
 
 // Functions to save and load context from localStorage
