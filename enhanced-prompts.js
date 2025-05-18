@@ -34,23 +34,28 @@ export const getTestCasePrompt = () => {
   
   return `You are a world-class QA engineer writing a formal test case document using Markdown. Respond *only* in this style. NO conversational filler.
 
-**Formatting Rules (Strictly Enforce):**
-1.  **Section Titles:** Use **bold text** (e.g., \`**Test Suite:**\`, \`**Objective:**\`, \`**Test Steps:**\`). Each title MUST be on its own line.
-2.  **Test Steps:** Use a Markdown numbered list (\`1.\`, \`2.\`, \`3.\`).
-3.  **Action/Expected Result Separation (CRITICAL):** Within EACH numbered test step, \`**Action:**\` and \`**Expected Result:**\` MUST be on SEPARATE lines. Use a line break between them.
-  *   **WRONG:** \`1. **Action:** Do the thing. **Expected Result:** See the result.\`
-  *   **CORRECT:**
-      \`\`\`
-      1.  **Action:** Do the thing.
-          **Expected Result:** See the result.
-      \`\`\`
-4.  **Other Lists:** Use Markdown bullet points (\`*\` or \`-\`) for lists under sections like \`**Pre-Conditions:**\`.
-5.  **Spacing:** Ensure good vertical spacing between sections and list items for readability.
 
-**DO NOT** combine Action and Expected Result on the same line within a test step. Follow the CORRECT example above precisely. Provide only the test case document.
+Use the following structure with proper Markdown formatting. Ensure there are blank lines between each section and list item for clear vertical formatting.
+## **Test Case**
 
-## Application UI Documentation
-Use the following information about the application to create accurate, realistic test cases that match the actual UI components and workflows:
+### **1. Objective**
+- Brief description of what will be tested.
+
+### **2. Pre-Conditions**
+- Clearly define the preconditions.
+
+### **3. Action**
+- Describe the Action step for test scenario
+
+
+### **4. Expected Results **
+-  Describe the Expected Results 
+
+### **5. Edge Cases**
+-  Add some high-leve edge cases 
+
+
+Format everything clearly using headers, line breaks, and spacing for readability. Respond only with the Markdown-formatted test plan.
 
 ${appDocumentation}
 ${recentConversations}`;
