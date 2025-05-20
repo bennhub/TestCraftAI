@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Assistant Flow Chart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .node {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin: 0.5rem;
+      text-align: center;
+    }
+    .arrow {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 15px solid #6B7280;
+      margin: 0.5rem auto;
+    }
+    .code-block {
+      background-color: #1F2937;
+      color: white;
+      border-radius: 0.25rem;
+      padding: 0.5rem;
+      font-family: monospace;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      text-align: left;
+      overflow: auto;
+      max-height: 150px;
+    }
+    .comparison-card {
+      background-color: white;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <h1 class="text-2xl font-bold text-center mb-8">AI Context Processing Flow</h1>
+  
+  <div class="flex flex-col items-center max-w-4xl mx-auto">
+    <!-- User Input -->
+    <div class="node bg-blue-100 border-2 border-blue-300 w-96">
+      <div class="font-bold">User submits ticket information</div>
+      <div class="code-block">
+        Title: "Add photo gallery upload progress indicator"<br>
+        Details: "Users need a visual indicator showing upload progress..."
+      </div>
+    </div>
+    
+    <div class="arrow"></div>
+    
+    <!-- Context Sources Row -->
+    <div class="flex flex-wrap justify-center gap-4 w-full">
+      <div class="node bg-green-100 border-2 border-green-300 w-72">
+        <div class="font-bold mb-2">1. App Documentation Context</div>
+        <div class="code-block h-32">
+          # Application UI Functionality<br><br>
+          ## Photo Uploading<br>
+          - Files can be uploaded to collections...<br>
+          - Uploads can be JPEG, PNG, or RAW files...<br>
+          - After files are added to the upload queue,<br>
+            the overall progress will be displayed...<br>
+          ...
+        </div>
+      </div>
+      
+      <div class="node bg-purple-100 border-2 border-purple-300 w-72">
+        <div class="font-bold mb-2">2. Conversation History</div>
+        <div class="code-block h-32">
+          ## Recent Conversations<br><br>
+          ### Conversation 1<br>
+          **User Query:** "Generate test case for login feature"<br>
+          **AI Response:** "## Test Case<br>
+          ### 1. Objective<br>
+          - Verify user can successfully login..."<br>
+          ...
+        </div>
+      </div>
+      
+      <div class="node bg-yellow-100 border-2 border-yellow-300 w-72">
+        <div class="font-bold mb-2">3. Enhanced Prompt Template</div>
+        <div class="code-block h-32">
+          You are a world-class QA engineer writing 
+          a formal test case document using Markdown.<br><br>
+          Use the following structure with proper 
+          Markdown formatting:<br><br>
+          ## **Test Case**<br><br>
+          ### **1. Objective**<br>
+          - Brief description...<br>
+          ...
+        </div>
+      </div>
+    </div>
+    
+    <div class="arrow"></div>
+    
+    <!-- Prompt Construction -->
+    <div class="node bg-red-100 border-2 border-red-300 w-full">
+      <div class="font-bold">4. Dynamic Prompt Construction</div>
+      <div class="code-block">
+        // Function from code<br>
+        async function getResponse(userPrompt) {<br>
+        &nbsp;&nbsp;// Get personality (prompt template) with context<br>
+        &nbsp;&nbsp;const personality = getTestCasePrompt();<br>
+        &nbsp;&nbsp;const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;<br><br>
+        &nbsp;&nbsp;// Send to AI model<br>
+        &nbsp;&nbsp;const chat = model.startChat();<br>
+        &nbsp;&nbsp;const result = await chat.sendMessage([{text: fullPrompt}]);<br>
+        &nbsp;&nbsp;...<br>
+        }<br>
+      </div>
+    </div>
+    
+    <div class="arrow"></div>
+    
+    <!-- AI Processing -->
+    <div class="node bg-indigo-100 border-2 border-indigo-300 w-80">
+      <div class="font-bold">5. Gemini AI Processing</div>
+      <p class="text-sm mt-2">
+        Processes enriched prompt with broader context awareness
+      </p>
+    </div>
+    
+    <div class="arrow"></div>
+    
+    <!-- Context Application - UPDATED to match the image -->
+    <div class="node bg-teal-100 border-2 border-teal-300 w-full">
+      <div class="font-bold text-xl mb-4">6. Context Application in Response</div>
+      
+      <!-- Comparison cards - Side by side layout -->
+      <div class="flex flex-wrap justify-center gap-4">
+        <!-- Without Context -->
+        <div class="comparison-card w-5/12 border border-red-200">
+          <h3 class="font-bold text-red-600 mb-2">Without Context</h3>
+          <p class="text-sm text-left mb-2">
+            Generic test cases lacking application-specific details:
+          </p>
+          <ul class="text-sm text-left list-disc pl-5">
+            <li>Generic "upload file" test</li>
+            <li>No mention of specific file types</li>
+            <li>Missing reference to UI elements</li>
+            <li>No knowledge of existing progress display</li>
+          </ul>
+        </div>
+        
+        <!-- With Context -->
+        <div class="comparison-card w-5/12 border border-green-200">
+          <h3 class="font-bold text-green-600 mb-2">With Context</h3>
+          <p class="text-sm text-left mb-2">
+            Context-aware test cases with app-specific knowledge:
+          </p>
+          <ul class="text-sm text-left list-disc pl-5">
+            <li>Tests for JPEG, PNG, RAW (from docs)</li>
+            <li>References to "Upload Bar" UI element</li>
+            <li>Edge cases for file size limits (100MB)</li>
+            <li>Tests for drag-and-drop functionality</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="arrow"></div>
+    
+    <!-- Final Output -->
+    <div class="node bg-blue-100 border-2 border-blue-300 w-full">
+      <div class="font-bold">7. Context-Enriched Response</div>
+      <div class="code-block">
+        ## **Test Case**<br><br>
+        ### **1. Objective**<br>
+        - Verify the photo upload progress indicator displays correctly during file uploads.<br><br>
+        ### **2. Pre-Conditions**<br>
+        - User is logged into their account<br>
+        - User has navigated to a collection<br>
+        - User has files ready for upload (JPEG, PNG, RAW under 100MB)<br><br>
+        ### **3. Action**<br>
+        - Click "+ Add Media" on the top right to open Upload Modal<br>
+        - Add multiple files to the upload queue<br>
+        - Observe the Upload Bar on the bottom right<br>
+      </div>
+    </div>
+    
+    <!-- Key points -->
+    <div class="mt-8 p-4 bg-white rounded-lg shadow border border-gray-200 w-full">
+      <h2 class="text-lg font-semibold mb-2">Key Context Application Points:</h2>
+      <ol class="space-y-1 text-sm list-decimal pl-5">
+        <li><span class="font-medium">Application-specific terminology</span>: Uses terms from docs like "Upload Bar" and "Add Media"</li>
+        <li><span class="font-medium">Technical constraints</span>: References file types and size limits from documentation</li>
+        <li><span class="font-medium">UI workflow knowledge</span>: Understanding of where elements appear and actual user workflow</li>
+        <li><span class="font-medium">Relevant edge cases</span>: Identifies app-specific edge cases based on functionality</li>
+        <li><span class="font-medium">Format consistency</span>: Maintains the structure specified in the prompt template</li>
+      </ol>
+      
+      <h2 class="text-lg font-semibold mt-6 mb-2">Future Context Enhancement:</h2>
+      <p class="text-sm mb-2">While storing application documentation in context.js provides a solid foundation, it requires manual updates to keep information current. For a more scalable solution, integrating with Notion would offer significant advantages:</p>
+      
+      <ol class="space-y-1 text-sm list-decimal pl-5">
+        <li><span class="font-medium">Dynamic content retrieval</span>: Connect to Notion's API to fetch the latest documentation in real-time</li>
+        <li><span class="font-medium">Targeted context selection</span>: Query specific Notion pages or databases containing relevant information for each prompt</li>
+        <li><span class="font-medium">Collaborative maintenance</span>: Allow team members to update documentation in a familiar interface without code changes</li>
+        <li><span class="font-medium">Version control</span>: Track documentation changes through Notion's history features</li>
+        <li><span class="font-medium">Rich media support</span>: Include images, tables, and other structured content directly from your knowledge base</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>
