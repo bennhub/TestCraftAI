@@ -130,6 +130,9 @@ Format everything clearly using headers, line breaks, and spacing for readabilit
 ${appDocumentation}`;
 };
 
+//********************************** 
+// FUTURE IMPLEMENTATIONS
+//********************************** 
 // Enhanced bug report template prompt
 export const getBugReportPrompt = () => {
   const appDocumentation = getAppDocumentation();

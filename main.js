@@ -141,7 +141,7 @@ export const userDiv = (data) => {
   return `
   <!-- User Chat -->
   <div class="flex items-center gap-2 justify-start m-2">
-    <img src="human.png" alt="user icon" class="w-10 h-10 rounded-full"/>
+    <img src="./public/human.png" alt="user icon" class="w-10 h-10 rounded-full"/>
     <div class="bg-gemDeep text-black p-1 rounded-md shadow-md mx-2">${data}</div>
   </div>
   `;
