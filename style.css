@@ -121,7 +121,7 @@ button:hover {
   flex-direction: column;
   height: 100%;
   width: 100%;
-  background-color: white;
+  background-color: rgb(253, 254, 247);
   overflow: hidden;
 }
 
