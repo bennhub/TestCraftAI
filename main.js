@@ -141,7 +141,7 @@ export const userDiv = (data) => {
   return `
   <!-- User Chat -->
   <div class="flex items-center gap-2 justify-start m-2">
-    <img src="./public/human.png" alt="user icon" class="w-10 h-10 rounded-full"/>
+   <i class="material-symbols-outlined" style="font-size: 36px;">Mood</i>
     <div class="bg-gemDeep text-black p-1 rounded-md shadow-md mx-2">${data}</div>
   </div>
   `;
@@ -156,7 +156,7 @@ export const aiDiv = (data) => {
       <button class="copy-btn absolute top-0 right-0 bg-blue-500 text-white p-1 rounded-md shadow-md mx-2">Copy</button>
       ${data}
     </div>
-    <!-- <img src="bot.png" alt="bot icon" class="w-10 h-10 rounded-full"/> -->
+    <i class="material-symbols-outlined" style="font-size: 36px;">robot_2</i>
   </div>
   `;
 };
