@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai@latest";
 import MarkdownIt from "https://esm.run/markdown-it@13.0.1";
-import { API_KEY } from "./config.js";
 // Import context-aware prompts
 import { 
   getTestCasePrompt, 
@@ -21,26 +20,119 @@ import {
 // Initialize markdown parser
 const md = new MarkdownIt();
 
-// --- Initialize the model USING the imported key ---
-// Check if the imported API key is valid before initializing
-if (!API_KEY || API_KEY === "") {
-  // Display an error or alert if the key is missing/default in config.js
-  alert(
-    "ERROR: API Key is missing or not set in config.js. Please create config.js and add your API key."
-  );
-  console.error("API Key is missing or not set in config.js!");
+// API Key Management
+let GOOGLE_API_KEY = localStorage.getItem('googleApiKey') || '';
+let CHATGPT_API_KEY = localStorage.getItem('chatgptApiKey') || ''; // Placeholder for future feature
+
+// Initialize Google AI (will be null if no API key)
+let genAI = null;
+let model = null;
+
+// Function to initialize Google AI with API key
+function initializeGoogleAI(apiKey) {
+  try {
+    genAI = new GoogleGenerativeAI(apiKey);
+    model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    return true;
+  } catch (error) {
+    console.error("Error initializing Google AI:", error);
+    return false;
+  }
 }
 
-// Initialize the model with the updated version
-const genAI = new GoogleGenerativeAI(API_KEY);
-// Update to Gemini 2.0 Flash
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+// Initialize if we have a stored API key
+if (GOOGLE_API_KEY) {
+  initializeGoogleAI(GOOGLE_API_KEY);
+}
 
 let history = [];
 let testCases = [];
 
+// Function to check if API key is configured
+function checkApiKey() {
+  if (!GOOGLE_API_KEY || !model) {
+    showApiKeyModal();
+    return false;
+  }
+  return true;
+}
+
+// Function to show API key configuration modal
+function showApiKeyModal() {
+  const modal = document.createElement('div');
+  modal.className = 'api-key-modal';
+  modal.innerHTML = `
+    <div class="api-key-modal-content">
+      <h3 class="text-xl font-bold mb-4">Configure API Keys</h3>
+      <p class="mb-4">Please enter your API keys to use the QA Assistant:</p>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-bold mb-2">Google Gemini API Key (Required):</label>
+        <input type="password" id="google-api-input" class="w-full p-2 border rounded" 
+               placeholder="Enter your Google Gemini API key" value="${GOOGLE_API_KEY}">
+        <p class="text-xs text-gray-600 mt-1">
+          Get your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-500">Google AI Studio</a>
+        </p>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-bold mb-2">ChatGPT API Key (Future Feature):</label>
+        <input type="password" id="chatgpt-api-input" class="w-full p-2 border rounded bg-gray-100" 
+               placeholder="ChatGPT integration coming soon..." disabled>
+        <p class="text-xs text-gray-600 mt-1">This feature will be available in a future update</p>
+      </div>
+      
+      <div class="modal-buttons">
+        <button id="save-api-keys-btn" class="bg-blue-500 text-white p-2 rounded">Save & Continue</button>
+        <button id="cancel-api-keys-btn" class="bg-gray-500 text-white p-2 rounded ml-2">Cancel</button>
+      </div>
+      
+      <div class="mt-4 p-3 bg-yellow-100 rounded">
+        <p class="text-sm"><strong>Note:</strong> Your API keys are stored locally in your browser and never sent to our servers.</p>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  
+  // Add event listeners
+  document.getElementById('save-api-keys-btn').addEventListener('click', () => {
+    const googleKey = document.getElementById('google-api-input').value.trim();
+    const chatgptKey = document.getElementById('chatgpt-api-input').value.trim();
+    
+    if (!googleKey) {
+      alert('Google Gemini API key is required to use the QA Assistant.');
+      return;
+    }
+    
+    // Save API keys
+    GOOGLE_API_KEY = googleKey;
+    CHATGPT_API_KEY = chatgptKey;
+    localStorage.setItem('googleApiKey', GOOGLE_API_KEY);
+    localStorage.setItem('chatgptApiKey', CHATGPT_API_KEY);
+    
+    // Initialize Google AI
+    if (initializeGoogleAI(GOOGLE_API_KEY)) {
+      document.body.removeChild(modal);
+      alert('API key saved successfully! You can now use the QA Assistant.');
+    } else {
+      alert('Invalid Google API key. Please check your key and try again.');
+    }
+  });
+  
+  document.getElementById('cancel-api-keys-btn').addEventListener('click', () => {
+    document.body.removeChild(modal);
+  });
+}
+
+// Function to show API key settings (accessible from UI)
+function showApiKeySettings() {
+  showApiKeyModal();
+}
+
 // Function to send prompt to the AI model and get response
 async function getResponse(userPrompt) {
+  if (!checkApiKey()) return null;
+  
   // Using dynamic context-aware prompt
   const personality = getTestCasePrompt();
   const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;
@@ -62,6 +154,13 @@ async function getResponse(userPrompt) {
     return text;
   } catch (error) {
     console.error("Error communicating with AI:", error);
+    
+    // Check if it's an API key related error
+    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
+      alert('API key error. Please check your Google Gemini API key.');
+      showApiKeyModal();
+    }
+    
     const chatArea = document.getElementById("chat-container");
     if (chatArea) {
       chatArea.innerHTML += aiDiv(
@@ -77,6 +176,8 @@ async function getResponse(userPrompt) {
 
 // Generate feature understanding questions
 async function getQuestionsResponse(userPrompt) {
+  if (!checkApiKey()) return null;
+  
   const personality = getQuestionsPrompt();
   const fullPrompt = `${personality}\n\nGenerate questions for this feature/ticket:\n${userPrompt}`;
 
@@ -97,6 +198,13 @@ async function getQuestionsResponse(userPrompt) {
     return text;
   } catch (error) {
     console.error("Error communicating with AI for questions:", error);
+    
+    // Check if it's an API key related error
+    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
+      alert('API key error. Please check your Google Gemini API key.');
+      showApiKeyModal();
+    }
+    
     const chatArea = document.getElementById("chat-container");
     if (chatArea) {
       chatArea.innerHTML += aiDiv(
@@ -112,6 +220,8 @@ async function getQuestionsResponse(userPrompt) {
 
 // Generate test plan
 async function getTestPlanResponse(userPrompt) {
+  if (!checkApiKey()) return null;
+  
   const personality = getTestPlanPrompt();
   const fullPrompt = `${personality}\n\nGenerate a test plan for this feature/project:\n${userPrompt}`;
 
@@ -132,6 +242,13 @@ async function getTestPlanResponse(userPrompt) {
     return text;
   } catch (error) {
     console.error("Error generating test plan:", error);
+    
+    // Check if it's an API key related error
+    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
+      alert('API key error. Please check your Google Gemini API key.');
+      showApiKeyModal();
+    }
+    
     return null;
   }
 }
@@ -498,6 +615,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Initialize context management UI elements
   initContextUI();
+  
+  // Check if API key is configured on load
+  if (!GOOGLE_API_KEY) {
+    // Show a subtle notification that API key is needed
+    setTimeout(() => {
+      showApiKeyModal();
+    }, 1000);
+  }
 });
 
 // Function to handle new test case submission
@@ -650,6 +775,7 @@ function initContextUI() {
   const viewContextBtn = document.getElementById("view-context-btn");
   const clearHistoryBtn = document.getElementById("clear-history-btn");
   const resetContextBtn = document.getElementById("reset-context-btn");
+  const apiKeySettingsBtn = document.getElementById("api-key-settings-btn");
   
   // Set up event listeners if buttons exist
   if (editContextBtn) {
@@ -666,6 +792,11 @@ function initContextUI() {
   
   if (resetContextBtn) {
     resetContextBtn.addEventListener("click", resetToDefault);
+  }
+  
+  // New: API Key Settings button
+  if (apiKeySettingsBtn) {
+    apiKeySettingsBtn.addEventListener("click", showApiKeySettings);
   }
 }
 
@@ -790,3 +921,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// Export functions that might be needed elsewhere
+window.showApiKeySettings = showApiKeySettings;
+window.checkApiKey = checkApiKey;
