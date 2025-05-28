@@ -24,6 +24,23 @@ const md = new MarkdownIt();
 let GOOGLE_API_KEY = localStorage.getItem('googleApiKey') || '';
 let CHATGPT_API_KEY = localStorage.getItem('chatgptApiKey') || ''; // Placeholder for future feature
 
+// Open Ai Initialize
+let openaiModel = null;
+
+function initializeOpenAI(apiKey) {
+  try {
+    openaiModel = {
+      apiKey,
+      endpoint: "https://api.openai.com/v1/chat/completions",
+      model: "gpt-4o" // Or "gpt-3.5-turbo"
+    };
+    return true;
+  } catch (error) {
+    console.error("Error initializing OpenAI:", error);
+    return false;
+  }
+}
+
 // Initialize Google AI (will be null if no API key)
 let genAI = null;
 let model = null;
@@ -50,12 +67,22 @@ let testCases = [];
 
 // Function to check if API key is configured
 function checkApiKey() {
-  if (!GOOGLE_API_KEY || !model) {
+  if (!GOOGLE_API_KEY && !CHATGPT_API_KEY) {
     showApiKeyModal();
     return false;
   }
-  return true;
+
+  if (GOOGLE_API_KEY && !model) {
+    initializeGoogleAI(GOOGLE_API_KEY);
+  }
+
+  if (CHATGPT_API_KEY && !openaiModel) {
+    initializeOpenAI(CHATGPT_API_KEY);
+  }
+
+  return !!model || !!openaiModel;
 }
+
 
 // Function to show API key configuration modal
 function showApiKeyModal() {
@@ -67,7 +94,7 @@ function showApiKeyModal() {
       <p class="mb-4">Please enter your API keys to use the QA Assistant:</p>
       
       <div class="mb-4">
-        <label class="block text-sm font-bold mb-2">Google Gemini API Key (Required):</label>
+        <label class="block text-sm font-bold mb-2">Google Gemini API Key:</label>
         <input type="password" id="google-api-input" class="w-full p-2 border rounded" 
                placeholder="Enter your Google Gemini API key" value="${GOOGLE_API_KEY}">
         <p class="text-xs text-gray-600 mt-1">
@@ -76,10 +103,10 @@ function showApiKeyModal() {
       </div>
       
       <div class="mb-4">
-        <label class="block text-sm font-bold mb-2">ChatGPT API Key (Future Feature):</label>
-        <input type="password" id="chatgpt-api-input" class="w-full p-2 border rounded bg-gray-100" 
-               placeholder="ChatGPT integration coming soon..." disabled>
-        <p class="text-xs text-gray-600 mt-1">This feature will be available in a future update</p>
+        <label class="block text-sm font-bold mb-2">OpenAI ChatGPT API Key:</label>
+        <input type="password" id="chatgpt-api-input" class="w-full p-2 border rounded" 
+               placeholder="Enter your OpenAI ChatGPT API key" value="${CHATGPT_API_KEY}">
+        <p class="text-xs text-gray-600 mt-1">Get your key at <a href="https://platform.openai.com/account/api-keys" target="_blank" class="text-blue-500">OpenAI API Keys</a></p>
       </div>
       
       <div class="modal-buttons">
@@ -93,32 +120,41 @@ function showApiKeyModal() {
     </div>
   `;
   document.body.appendChild(modal);
-  
-  // Add event listeners
+
+  // Save & Continue button
   document.getElementById('save-api-keys-btn').addEventListener('click', () => {
     const googleKey = document.getElementById('google-api-input').value.trim();
     const chatgptKey = document.getElementById('chatgpt-api-input').value.trim();
-    
-    if (!googleKey) {
-      alert('Google Gemini API key is required to use the QA Assistant.');
+
+    if (!googleKey && !chatgptKey) {
+      alert('At least one API key (Google Gemini or ChatGPT) is required to use the QA Assistant.');
       return;
     }
-    
-    // Save API keys
+
+    // Save to global and localStorage
     GOOGLE_API_KEY = googleKey;
     CHATGPT_API_KEY = chatgptKey;
     localStorage.setItem('googleApiKey', GOOGLE_API_KEY);
     localStorage.setItem('chatgptApiKey', CHATGPT_API_KEY);
-    
-    // Initialize Google AI
-    if (initializeGoogleAI(GOOGLE_API_KEY)) {
+
+    // Try to initialize either or both
+    let success = false;
+    if (GOOGLE_API_KEY) {
+      success = initializeGoogleAI(GOOGLE_API_KEY);
+    }
+    if (CHATGPT_API_KEY) {
+      success = initializeOpenAI(CHATGPT_API_KEY) || success;
+    }
+
+    if (success) {
       document.body.removeChild(modal);
-      alert('API key saved successfully! You can now use the QA Assistant.');
+      alert('API key(s) saved successfully! You can now use the QA Assistant.');
     } else {
-      alert('Invalid Google API key. Please check your key and try again.');
+      alert('Failed to initialize with the provided API key(s). Please check and try again.');
     }
   });
-  
+
+  // Cancel button
   document.getElementById('cancel-api-keys-btn').addEventListener('click', () => {
     document.body.removeChild(modal);
   });
@@ -129,52 +165,125 @@ function showApiKeySettings() {
   showApiKeyModal();
 }
 
+
+// Function to send prompt to the AI model and get response
+// Function to send prompt to the AI model and get response
 // Function to send prompt to the AI model and get response
 async function getResponse(userPrompt) {
   if (!checkApiKey()) return null;
-  
-  // Using dynamic context-aware prompt
+
   const personality = getTestCasePrompt();
   const fullPrompt = `${personality}\n\nGenerate the test case based on this request:\n${userPrompt}`;
 
   try {
-    // Create a fresh chat instance without history to avoid conflicts
-    const chat = model.startChat();
-    
-    // Send message in the format required by the latest Google Generative AI library
-    const result = await chat.sendMessage([{text: fullPrompt}]);
-    const response = await result.response;
-    const text = response.text();
+    // === GOOGLE GEMINI PATH ===
+    if (model && GOOGLE_API_KEY) {
+      const chat = model.startChat();
+      const result = await chat.sendMessage([{ text: fullPrompt }]);
+      const response = await result.response;
+      const text = response.text();
 
-    console.log("AI response (raw):", text);
+      console.log("AI response (Google Gemini):", text);
+      addConversation(userPrompt, text);
+      return text;
+    }
 
-    // Store conversation in persistent context
-    addConversation(userPrompt, text);
+    // === OPENAI GPT PATH ===
+    if (openaiModel && CHATGPT_API_KEY) {
+      console.log("Using OpenAI API...");
+      
+      const res = await fetch(openaiModel.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiModel.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: openaiModel.model,
+          messages: [
+            { role: "system", content: personality },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000, // Add token limit
+        }),
+      });
 
-    return text;
+      console.log("OpenAI Response Status:", res.status);
+
+      // Better error handling for different status codes
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("OpenAI API Error:", errorData);
+        
+        if (res.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait a moment and try again, or check your OpenAI billing/quota.");
+        } else if (res.status === 401) {
+          throw new Error("Invalid OpenAI API key. Please check your API key in settings.");
+        } else if (res.status === 403) {
+          throw new Error("OpenAI API access forbidden. Check your API key permissions.");
+        } else {
+          throw new Error(`OpenAI API error: ${res.status} - ${errorData.error?.message || 'Unknown error'}`);
+        }
+      }
+
+      const data = await res.json();
+      console.log("OpenAI Response Data:", data);
+
+      // Better response validation
+      if (!data.choices || data.choices.length === 0) {
+        console.error("No choices in OpenAI response:", data);
+        throw new Error("No response generated from OpenAI. Please try again.");
+      }
+
+      if (!data.choices[0].message || !data.choices[0].message.content) {
+        console.error("No message content in OpenAI response:", data.choices[0]);
+        throw new Error("Invalid response format from OpenAI. Please try again.");
+      }
+
+      const text = data.choices[0].message.content.trim();
+
+      console.log("AI response (ChatGPT):", text);
+      addConversation(userPrompt, text);
+      return text;
+    }
+
+    // If neither model is ready
+    throw new Error("No AI model is currently initialized. Please configure your API keys.");
+
   } catch (error) {
     console.error("Error communicating with AI:", error);
-    
-    // Check if it's an API key related error
-    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
-      alert('API key error. Please check your Google Gemini API key.');
+
+    // More specific error handling
+    if (error.message.includes("Rate limit") || error.message.includes("429")) {
+      alert("Rate limit exceeded. Please wait a moment before trying again, or check your OpenAI billing/quota.");
+    } else if (
+      error.message.includes("API_KEY") ||
+      error.message.includes("401") ||
+      error.message.includes("403") ||
+      error.message.includes("Invalid") ||
+      error.message.includes("forbidden")
+    ) {
+      alert("API key error: " + error.message);
       showApiKeyModal();
+    } else {
+      // Show the actual error message to help with debugging
+      alert("AI Error: " + error.message);
     }
-    
+
     const chatArea = document.getElementById("chat-container");
     if (chatArea) {
       chatArea.innerHTML += aiDiv(
-        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(
-          error.message
-        )}</p></div>`
+        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(error.message)}</p></div>`
       );
       scrollToLastMessage(chatArea);
     }
+
     return null;
   }
 }
 
-// Generate feature understanding questions
+// Also need to update the other functions to work with both APIs
 async function getQuestionsResponse(userPrompt) {
   if (!checkApiKey()) return null;
   
@@ -182,35 +291,72 @@ async function getQuestionsResponse(userPrompt) {
   const fullPrompt = `${personality}\n\nGenerate questions for this feature/ticket:\n${userPrompt}`;
 
   try {
-    // Use a fresh chat instance without history to avoid conflicts
-    const chat = model.startChat();
-    
-    // Send message in the format required by the latest Google Generative AI library
-    const result = await chat.sendMessage([{text: fullPrompt}]);
-    const response = await result.response;
-    const text = response.text();
+    // === GOOGLE GEMINI PATH ===
+    if (model && GOOGLE_API_KEY) {
+      const chat = model.startChat();
+      const result = await chat.sendMessage([{text: fullPrompt}]);
+      const response = await result.response;
+      const text = response.text();
 
-    console.log("AI response (questions):", text);
-    
-    // Store conversation in persistent context
-    addConversation(userPrompt + " (Generate questions)", text);
-    
-    return text;
+      console.log("AI response (questions - Gemini):", text);
+      addConversation(userPrompt + " (Generate questions)", text);
+      return text;
+    }
+
+    // === OPENAI GPT PATH ===
+    if (openaiModel && CHATGPT_API_KEY) {
+      const res = await fetch(openaiModel.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiModel.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: openaiModel.model,
+          messages: [
+            { role: "system", content: personality },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait and try again.");
+        }
+        throw new Error(`OpenAI API error: ${res.status} - ${errorData.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await res.json();
+      if (!data.choices || !data.choices.length || !data.choices[0].message) {
+        throw new Error("Invalid response from OpenAI.");
+      }
+
+      const text = data.choices[0].message.content.trim();
+      console.log("AI response (questions - ChatGPT):", text);
+      addConversation(userPrompt + " (Generate questions)", text);
+      return text;
+    }
+
+    throw new Error("No AI model is currently initialized.");
+
   } catch (error) {
     console.error("Error communicating with AI for questions:", error);
     
-    // Check if it's an API key related error
-    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
-      alert('API key error. Please check your Google Gemini API key.');
+    if (error.message.includes("Rate limit") || error.message.includes("429")) {
+      alert("Rate limit exceeded. Please wait before trying again.");
+    } else if (error.message.includes("API") || error.message.includes("401") || error.message.includes("403")) {
+      alert("API key error: " + error.message);
       showApiKeyModal();
     }
     
     const chatArea = document.getElementById("chat-container");
     if (chatArea) {
       chatArea.innerHTML += aiDiv(
-        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(
-          error.message
-        )}</p></div>`
+        `<div class="ai-content p-2"><p class="text-red-600">Sorry, AI error: ${escapeHtml(error.message)}</p></div>`
       );
       scrollToLastMessage(chatArea);
     }
@@ -218,7 +364,6 @@ async function getQuestionsResponse(userPrompt) {
   }
 }
 
-// Generate test plan
 async function getTestPlanResponse(userPrompt) {
   if (!checkApiKey()) return null;
   
@@ -226,26 +371,65 @@ async function getTestPlanResponse(userPrompt) {
   const fullPrompt = `${personality}\n\nGenerate a test plan for this feature/project:\n${userPrompt}`;
 
   try {
-    // Use a fresh chat instance without history to avoid conflicts
-    const chat = model.startChat();
-    
-    // Send message in the format required by the latest Google Generative AI library
-    const result = await chat.sendMessage([{text: fullPrompt}]);
-    const response = await result.response;
-    const text = response.text();
+    // === GOOGLE GEMINI PATH ===
+    if (model && GOOGLE_API_KEY) {
+      const chat = model.startChat();
+      const result = await chat.sendMessage([{text: fullPrompt}]);
+      const response = await result.response;
+      const text = response.text();
 
-    console.log("AI response (test plan):", text);
-    
-    // Store conversation in persistent context
-    addConversation(userPrompt + " (Generate test plan)", text);
-    
-    return text;
+      console.log("AI response (test plan - Gemini):", text);
+      addConversation(userPrompt + " (Generate test plan)", text);
+      return text;
+    }
+
+    // === OPENAI GPT PATH ===
+    if (openaiModel && CHATGPT_API_KEY) {
+      const res = await fetch(openaiModel.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openaiModel.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: openaiModel.model,
+          messages: [
+            { role: "system", content: personality },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait and try again.");
+        }
+        throw new Error(`OpenAI API error: ${res.status} - ${errorData.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await res.json();
+      if (!data.choices || !data.choices.length || !data.choices[0].message) {
+        throw new Error("Invalid response from OpenAI.");
+      }
+
+      const text = data.choices[0].message.content.trim();
+      console.log("AI response (test plan - ChatGPT):", text);
+      addConversation(userPrompt + " (Generate test plan)", text);
+      return text;
+    }
+
+    throw new Error("No AI model is currently initialized.");
+
   } catch (error) {
     console.error("Error generating test plan:", error);
     
-    // Check if it's an API key related error
-    if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
-      alert('API key error. Please check your Google Gemini API key.');
+    if (error.message.includes("Rate limit") || error.message.includes("429")) {
+      alert("Rate limit exceeded. Please wait before trying again.");
+    } else if (error.message.includes("API") || error.message.includes("401") || error.message.includes("403")) {
+      alert("API key error: " + error.message);
       showApiKeyModal();
     }
     
